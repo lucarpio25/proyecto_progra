@@ -1,14 +1,16 @@
 import streamlit as st
+import pandas as pd
+from processing import procesar_datos
 
-from processing import load_data, clean_data, get_metrics
+st.title("Análisis de películas")
+
+df = pd.read_csv("data/mymoviedb.csv", engine="python", on_bad_lines="skip")
+df = procesar_datos(df)
+
+st.dataframe(df)
 
 
-st.set_page_config(page_title="Dashboard de Películas", layout="wide")
 
-st.title("Dashboard de Películas - Entrega Parcial")
 
-st.write("App inicial del proyecto.")
 
-DATA_PATH = "data/mymoviedb.csv"
 
-df_raw = load_data(DATA_PATH)
