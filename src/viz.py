@@ -1,18 +1,39 @@
 import matplotlib.pyplot as plt
 
+from processing import obtener_generos_expandido, obtener_paises_expandido
+
+
+def plot_titles_by_type(df):
+    """
+    Muestra la cantidad de títulos por tipo: Movie o TV Show.
+    """
+
+    type_counts = df["type"].value_counts()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    type_counts.plot(
+        kind="bar",
+        ax=ax
+    )
+
+    ax.set_title("Cantidad de títulos por tipo")
+    ax.set_xlabel("Tipo de contenido")
+    ax.set_ylabel("Cantidad")
+
+    ax.tick_params(axis="x", rotation=0)
+
+    plt.tight_layout()
+
+    return fig
+
 
 def plot_top_genres(df):
     """
     Muestra los 10 géneros más frecuentes.
-    Si una película tiene varios géneros separados por coma,
-    los cuenta por separado.
     """
 
-    df = df.copy()
-
-    genres = df["Genre"].dropna().str.split(", ")
-    genres = genres.explode()
-
+    genres = obtener_generos_expandido(df)
     genre_counts = genres.value_counts().head(10)
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -24,7 +45,7 @@ def plot_top_genres(df):
 
     ax.set_title("Top 10 géneros más frecuentes")
     ax.set_xlabel("Género")
-    ax.set_ylabel("Cantidad de películas")
+    ax.set_ylabel("Cantidad de títulos")
 
     ax.tick_params(axis="x", rotation=45)
 
@@ -33,26 +54,24 @@ def plot_top_genres(df):
     return fig
 
 
-def plot_movies_by_year(df):
+def plot_titles_by_year(df):
     """
-    Muestra la cantidad de películas estrenadas por año.
+    Muestra la cantidad de títulos por año de estreno.
     """
 
-    df = df.copy()
-
-    movies_by_year = df.groupby("Year").size().sort_index()
+    titles_by_year = df.groupby("release_year").size().sort_index()
 
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    movies_by_year.plot(
+    titles_by_year.plot(
         kind="line",
         marker="o",
         ax=ax
     )
 
-    ax.set_title("Cantidad de películas por año")
-    ax.set_xlabel("Año")
-    ax.set_ylabel("Cantidad de películas")
+    ax.set_title("Cantidad de títulos por año de estreno")
+    ax.set_xlabel("Año de estreno")
+    ax.set_ylabel("Cantidad de títulos")
 
     ax.grid(True, alpha=0.3)
 
@@ -61,137 +80,51 @@ def plot_movies_by_year(df):
     return fig
 
 
-def plot_vote_distribution(df):
+def plot_top_countries(df):
     """
-    Muestra la distribución de calificaciones promedio.
+    Muestra los 10 países con más títulos en el catálogo.
     """
 
-    df = df.copy()
+    countries = obtener_paises_expandido(df)
+    country_counts = countries.value_counts().head(10)
 
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    ax.hist(
-        df["Vote_Average"].dropna(),
-        bins=20,
-        edgecolor="black"
-    )
-
-    ax.set_title("Distribución de calificaciones")
-    ax.set_xlabel("Calificación promedio")
-    ax.set_ylabel("Cantidad de películas")
-
-    ax.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-
-    return fig
-
-
-def plot_top_popular_movies(df):
-    """
-    Muestra las 10 películas con mayor popularidad.
-    """
-
-    df = df.copy()
-
-    top_movies = df.sort_values(
-        by="Popularity",
-        ascending=False
-    ).head(10)
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    ax.barh(
-        top_movies["Title"],
-        top_movies["Popularity"]
-    )
-
-    ax.set_title("Top 10 películas más populares")
-    ax.set_xlabel("Popularidad")
-    ax.set_ylabel("Película")
-
-    ax.invert_yaxis()
-
-    plt.tight_layout()
-
-    return fig
-
-
-def plot_vote_category(df):
-    """
-    Muestra la cantidad de películas por categoría de calificación.
-    Usa la columna Vote_Category creada en processing.py.
-    """
-
-    df = df.copy()
-
-    vote_counts = df["Vote_Category"].value_counts()
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-
-    vote_counts.plot(
+    country_counts.plot(
         kind="bar",
         ax=ax
     )
 
-    ax.set_title("Cantidad de películas por categoría de calificación")
-    ax.set_xlabel("Categoría")
-    ax.set_ylabel("Cantidad de películas")
+    ax.set_title("Top 10 países con más contenido")
+    ax.set_xlabel("País")
+    ax.set_ylabel("Cantidad de títulos")
 
-    ax.tick_params(axis="x", rotation=0)
+    ax.tick_params(axis="x", rotation=45)
 
     plt.tight_layout()
 
     return fig
 
 
-def plot_language_distribution(df):
+def plot_rating_distribution(df):
     """
-    Muestra los 10 idiomas originales más frecuentes.
+    Muestra la distribución de títulos por clasificación.
     """
 
-    df = df.copy()
-
-    language_counts = df["Original_Language"].value_counts().head(10)
+    rating_counts = df["rating"].value_counts().head(10)
 
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    language_counts.plot(
+    rating_counts.plot(
         kind="bar",
         ax=ax
     )
 
-    ax.set_title("Top 10 idiomas originales")
-    ax.set_xlabel("Idioma")
-    ax.set_ylabel("Cantidad de películas")
+    ax.set_title("Distribución por clasificación")
+    ax.set_xlabel("Clasificación")
+    ax.set_ylabel("Cantidad de títulos")
 
     ax.tick_params(axis="x", rotation=0)
-
-    plt.tight_layout()
-
-    return fig
-
-
-def plot_popularity_vs_vote(df):
-    """
-    Muestra la relación entre popularidad y calificación promedio.
-    """
-
-    df = df.copy()
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    ax.scatter(
-        df["Vote_Average"],
-        df["Popularity"],
-        alpha=0.5
-    )
-
-    ax.set_title("Relación entre calificación y popularidad")
-    ax.set_xlabel("Calificación promedio")
-    ax.set_ylabel("Popularidad")
-
-    ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
 
