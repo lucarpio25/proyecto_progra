@@ -1,17 +1,51 @@
-# Dashboard de Películas - Entrega Parcial
+# Dashboard del Catálogo de Netflix
 
-Proyecto de Programación Avanzada para la Ciencia de Datos.
+## Descripción
 
-## Integrantes y responsabilidades
+Este proyecto corresponde a la entrega parcial del curso Programación Avanzada para la Ciencia de Datos.
 
-1. Dataset y descripción de datos
-2. Limpieza y procesamiento de datos
-3. Visualizaciones
-4. App en Streamlit
-5. README, documento y GitHub
+La aplicación fue desarrollada en Streamlit y permite analizar un dataset del catálogo de Netflix mediante filtros interactivos, métricas descriptivas, tablas y visualizaciones.
 
-## Ejecutar la app
+## Dataset
 
-```bash
-pip install -r requirements.txt
-streamlit run src/app.py
+El archivo utilizado es `netflix_titles.csv`, que contiene información sobre películas y series disponibles en Netflix.
+
+Variables principales:
+
+- `type`: tipo de contenido, película o serie.
+- `title`: título.
+- `director`: director.
+- `cast`: elenco.
+- `country`: país o países de producción.
+- `date_added`: fecha en que el contenido fue agregado a Netflix.
+- `release_year`: año de estreno.
+- `rating`: clasificación del contenido.
+- `duration`: duración en minutos o temporadas.
+- `listed_in`: géneros o categorías.
+- `description`: descripción del título.
+
+## Funcionalidades
+
+- Carga de archivo CSV.
+- Limpieza de datos.
+- Tratamiento de valores faltantes.
+- Conversión de fechas y años.
+- Creación de columnas nuevas.
+- Métricas descriptivas.
+- Filtros por tipo, año, país, clasificación y género.
+- Tabla interactiva.
+- Gráficos de barras y línea.
+
+## Estructura del proyecto
+
+```text
+proyecto_progra/
+├── README.md
+├── requirements.txt
+├── data/
+│   └── netflix_titles.csv
+├── src/
+│   ├── app.py
+│   ├── processing.py
+│   └── viz.py
+└── docs/
