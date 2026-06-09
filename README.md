@@ -68,11 +68,13 @@ proyecto_progra/
 - Clona el repositorio:
 
 `bashgit clone https://github.com/lucarpio25/proyecto_progra.git`
+
 `cd proyecto_progra`
 
 - Crea y activa un entorno virtual:
 
 `bashpython3 -m venv mivenv`
+
 `source mivenv/bin/activate`
 
 - Instala las dependencias:
@@ -88,7 +90,9 @@ proyecto_progra/
 ## Referencias
 
 - Rahmad, A. (2023). Netflix Data Analysis with Streamlit [Repositorio GitHub]. https://github.com/ahmadrahmadx/Netflix-Data-Analysis
+
 Sirvió como referencia para la estructura del dashboard y la forma de presentar filtros por tipo de contenido y año.
 
 - Streamlit. (2024). Streamlit Documentation. https://docs.streamlit.io
+
 Documentación oficial utilizada para implementar los controles interactivos, métricas y visualizaciones de la app.
