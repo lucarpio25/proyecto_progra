@@ -67,23 +67,23 @@ proyecto_progra/
 
 - Clona el repositorio:
 
-`bashgit clone https://github.com/lucarpio25/proyecto_progra.git`
+`git clone https://github.com/lucarpio25/proyecto_progra.git`
 
 `cd proyecto_progra`
 
 - Crea y activa un entorno virtual:
 
-`bashpython3 -m venv mivenv`
+`python3 -m venv mivenv`
 
 `source mivenv/bin/activate`
 
 - Instala las dependencias:
 
-`bashpip install -r requirements.txt`
+`pip install -r requirements.txt`
 
 - Ejecuta la aplicación:
 
-`bashstreamlit run src/app.py`
+`streamlit run src/app.py`
 
 - Abre el navegador en http://localhost:8501.
 
