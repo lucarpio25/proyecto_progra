@@ -67,13 +67,13 @@ proyecto_progra/
 
 - Clona el repositorio:
 
-`bashgit clone https://github.com/lucarpio25/proyecto_progra.git
-cd proyecto_progra`
+`bashgit clone https://github.com/lucarpio25/proyecto_progra.git`
+`cd proyecto_progra`
 
 - Crea y activa un entorno virtual:
 
-`bashpython3 -m venv mivenv
-source mivenv/bin/activate`
+`bashpython3 -m venv mivenv`
+`source mivenv/bin/activate`
 
 - Instala las dependencias:
 
