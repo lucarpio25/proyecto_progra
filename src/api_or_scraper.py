@@ -1,6 +1,10 @@
+from db import registrar_intento_api
 import os
 import time
 from functools import wraps
+import re
+import unicodedata
+from difflib import SequenceMatcher
 
 import requests
 from dotenv import load_dotenv
@@ -74,30 +78,150 @@ def limpiar_valor(valor):
 
     return valor
 
-
-@medir_tiempo
-def buscar_titulo_omdb(titulo, tipo=None, anio=None):
+def normalizar_titulo(titulo):
     """
-    Busca un título en OMDb usando título, tipo y año.
+    Normaliza un título para facilitar comparaciones.
 
-    Parámetros:
-    - titulo: nombre de la película o serie.
-    - tipo: Movie o TV Show.
-    - anio: año de estreno.
+    Ejemplo:
+    'Pokémon: Mewtwo Strikes Back'
+    se convierte en:
+    'pokemon mewtwo strikes back'
+    """
 
-    Retorna:
-    - Diccionario con datos externos si encuentra resultado.
-    - None si no encuentra resultado o si ocurre un error.
+    if titulo is None:
+        return ""
+
+    titulo = str(titulo).lower().strip()
+
+    titulo = unicodedata.normalize("NFD", titulo)
+    titulo = "".join(
+        caracter
+        for caracter in titulo
+        if unicodedata.category(caracter) != "Mn"
+    )
+
+    titulo = re.sub(r"[^a-z0-9\s]", " ", titulo)
+    titulo = re.sub(r"\s+", " ", titulo).strip()
+
+    return titulo
+
+def calcular_similitud(titulo_original, titulo_candidato):
+    """
+    Calcula la similitud entre dos títulos.
+
+    Devuelve un valor entre 0 y 1.
+    Cuanto más cerca de 1, más parecidos son.
+    """
+
+    titulo_original = normalizar_titulo(titulo_original)
+    titulo_candidato = normalizar_titulo(titulo_candidato)
+
+    return SequenceMatcher(
+        None,
+        titulo_original,
+        titulo_candidato,
+    ).ratio()
+
+def hacer_request_omdb(params):
+    """
+    Ejecuta una solicitud a OMDb y devuelve el JSON.
+
+    Maneja errores de conexión, timeout y API.
     """
 
     api_key = obtener_api_key()
     url = "https://www.omdbapi.com/"
 
+    params = params.copy()
+    params["apikey"] = api_key
+    params["r"] = "json"
+
+    try:
+        response = requests.get(
+            url,
+            params=params,
+            timeout=10,
+        )
+
+        if response.status_code == 401:
+            print(
+                "API key inválida o no autorizada. "
+                "Revisa el archivo .env."
+            )
+            return None
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        if data.get("Response") == "False":
+            return None
+
+        return data
+
+    except requests.exceptions.Timeout:
+        print("Tiempo de espera agotado al consultar OMDb.")
+        return None
+
+    except requests.exceptions.ConnectionError:
+        print("Error de conexión con OMDb.")
+        return None
+
+    except requests.exceptions.HTTPError as error:
+        print(f"Error HTTP consultando OMDb: {error}")
+        return None
+
+    except requests.exceptions.RequestException as error:
+        print(f"Error general consultando OMDb: {error}")
+        return None
+
+    except ValueError as error:
+        print(f"Respuesta JSON inválida: {error}")
+        return None
+
+def formatear_resultado_omdb(data):
+    """
+    Convierte la respuesta de OMDb al formato usado por el proyecto.
+    """
+
+    if not data:
+        return None
+
+    return {
+        "imdb_id": limpiar_valor(data.get("imdbID")),
+        "title_omdb": limpiar_valor(data.get("Title")),
+        "year_omdb": limpiar_valor(data.get("Year")),
+        "rated_omdb": limpiar_valor(data.get("Rated")),
+        "runtime_omdb": limpiar_valor(data.get("Runtime")),
+        "genre_omdb": limpiar_valor(data.get("Genre")),
+        "director_omdb": limpiar_valor(data.get("Director")),
+        "actors_omdb": limpiar_valor(data.get("Actors")),
+        "plot_omdb": limpiar_valor(data.get("Plot")),
+        "language_omdb": limpiar_valor(data.get("Language")),
+        "country_omdb": limpiar_valor(data.get("Country")),
+        "awards_omdb": limpiar_valor(data.get("Awards")),
+        "poster_omdb": limpiar_valor(data.get("Poster")),
+        "imdb_rating": limpiar_valor(data.get("imdbRating")),
+        "imdb_votes": limpiar_valor(data.get("imdbVotes")),
+        "type_omdb": limpiar_valor(data.get("Type")),
+        "source": "OMDb API",
+    }
+
+
+@medir_tiempo
+def buscar_titulo_omdb(titulo, tipo=None, anio=None):
+    """
+    Busca un título directamente en OMDb.
+
+    Primer intento:
+    - título
+    - tipo
+    - año
+    """
+
     params = {
-        "apikey": api_key,
         "t": titulo,
-        "r": "json",
-        "plot": "short"
+        "plot": "short",
     }
 
     tipo_omdb = convertir_tipo_netflix_a_omdb(tipo)
@@ -108,78 +232,203 @@ def buscar_titulo_omdb(titulo, tipo=None, anio=None):
     if anio:
         params["y"] = int(anio)
 
-    try:
-        response = requests.get(
-            url,
-            params=params,
-            timeout=10
+    data = hacer_request_omdb(params)
+
+    return formatear_resultado_omdb(data)
+
+
+def buscar_candidatos_omdb(titulo, tipo=None):
+    """
+    Busca varios candidatos usando la búsqueda general de OMDb.
+    """
+
+    params = {
+        "s": titulo,
+    }
+
+    tipo_omdb = convertir_tipo_netflix_a_omdb(tipo)
+
+    if tipo_omdb:
+        params["type"] = tipo_omdb
+
+    data = hacer_request_omdb(params)
+
+    if not data:
+        return []
+
+    return data.get("Search", [])
+
+
+def seleccionar_mejor_candidato(
+    titulo,
+    candidatos,
+    anio=None,
+    similitud_minima=0.65,
+):
+    """
+    Selecciona el candidato más parecido.
+
+    Combina:
+    - similitud del título;
+    - coincidencia del año.
+    """
+
+    mejor_candidato = None
+    mejor_puntaje = 0
+
+    for candidato in candidatos:
+        titulo_candidato = candidato.get("Title", "")
+        anio_candidato = candidato.get("Year", "")
+
+        similitud = calcular_similitud(
+            titulo,
+            titulo_candidato,
         )
 
-        response.raise_for_status()
+        puntaje = similitud
 
-        data = response.json()
+        if anio:
+            primer_anio = str(anio_candidato)[:4]
 
-        if data.get("Response") == "False":
-            return None
+            if primer_anio == str(int(anio)):
+                puntaje += 0.20
 
-        resultado = {
-            "imdb_id": limpiar_valor(data.get("imdbID")),
-            "title_omdb": limpiar_valor(data.get("Title")),
-            "year_omdb": limpiar_valor(data.get("Year")),
-            "rated_omdb": limpiar_valor(data.get("Rated")),
-            "runtime_omdb": limpiar_valor(data.get("Runtime")),
-            "genre_omdb": limpiar_valor(data.get("Genre")),
-            "director_omdb": limpiar_valor(data.get("Director")),
-            "actors_omdb": limpiar_valor(data.get("Actors")),
-            "plot_omdb": limpiar_valor(data.get("Plot")),
-            "language_omdb": limpiar_valor(data.get("Language")),
-            "country_omdb": limpiar_valor(data.get("Country")),
-            "awards_omdb": limpiar_valor(data.get("Awards")),
-            "poster_omdb": limpiar_valor(data.get("Poster")),
-            "imdb_rating": limpiar_valor(data.get("imdbRating")),
-            "imdb_votes": limpiar_valor(data.get("imdbVotes")),
-            "type_omdb": limpiar_valor(data.get("Type")),
-            "source": "OMDb API"
-        }
+        if puntaje > mejor_puntaje:
+            mejor_puntaje = puntaje
+            mejor_candidato = candidato
 
+    if mejor_candidato is None:
+        return None
+
+    similitud_titulo = calcular_similitud(
+        titulo,
+        mejor_candidato.get("Title", ""),
+    )
+
+    if similitud_titulo < similitud_minima:
+        return None
+
+    return mejor_candidato
+
+
+def buscar_por_imdb_id(imdb_id):
+    """
+    Consulta todos los detalles de un título usando su IMDb ID.
+    """
+
+    if not imdb_id:
+        return None
+
+    params = {
+        "i": imdb_id,
+        "plot": "short",
+    }
+
+    data = hacer_request_omdb(params)
+
+    return formatear_resultado_omdb(data)
+
+
+@medir_tiempo
+def buscar_titulo_omdb_inteligente(titulo, tipo=None, anio=None):
+    """
+    Busca un título utilizando varios intentos.
+
+    1. Búsqueda exacta con año.
+    2. Búsqueda exacta sin año.
+    3. Búsqueda general y selección por similitud.
+    4. Consulta final mediante IMDb ID.
+    """
+
+    # Intento 1: búsqueda exacta con año
+    resultado = buscar_titulo_omdb(
+        titulo=titulo,
+        tipo=tipo,
+        anio=anio,
+    )
+
+    if resultado:
+        resultado["match_method"] = "exact_title_type_year"
+        resultado["similarity_score"] = 1.0
         return resultado
 
-    except requests.exceptions.Timeout:
-        print(f"Tiempo de espera agotado al buscar: {titulo}")
+    # Intento 2: búsqueda exacta sin año
+    resultado = buscar_titulo_omdb(
+        titulo=titulo,
+        tipo=tipo,
+        anio=None,
+    )
+
+    if resultado:
+        similitud = calcular_similitud(
+            titulo,
+            resultado.get("title_omdb"),
+        )
+
+        if similitud >= 0.75:
+            resultado["match_method"] = "exact_title_type"
+            resultado["similarity_score"] = round(similitud, 3)
+            return resultado
+
+    # Intento 3: búsqueda general
+    candidatos = buscar_candidatos_omdb(
+        titulo=titulo,
+        tipo=tipo,
+    )
+
+    mejor_candidato = seleccionar_mejor_candidato(
+        titulo=titulo,
+        candidatos=candidatos,
+        anio=anio,
+        similitud_minima=0.65,
+    )
+
+    if not mejor_candidato:
         return None
 
-    except requests.exceptions.ConnectionError:
-        print(f"Error de conexión al buscar: {titulo}")
+    imdb_id = mejor_candidato.get("imdbID")
+
+    # Intento 4: obtener detalles mediante IMDb ID
+    resultado = buscar_por_imdb_id(imdb_id)
+
+    if not resultado:
         return None
 
-    except requests.exceptions.HTTPError as e:
-        print(f"Error HTTP al buscar {titulo}: {e}")
-        return None
+    similitud = calcular_similitud(
+        titulo,
+        resultado.get("title_omdb"),
+    )
 
-    except requests.exceptions.RequestException as e:
-        print(f"Error general de request al buscar {titulo}: {e}")
-        return None
+    resultado["match_method"] = "fuzzy_search"
+    resultado["similarity_score"] = round(similitud, 3)
 
-    except ValueError as e:
-        print(f"Error procesando la respuesta para {titulo}: {e}")
-        return None
+    return resultado
 
 
 def enriquecer_dataframe_con_omdb(df, limite=50):
     """
-    Enriquece una muestra del DataFrame de Netflix con datos externos de OMDb.
+    Enriquece títulos de Netflix con OMDb.
 
-    Se usa un límite para no hacer demasiadas llamadas a la API.
+    Devuelve:
+    - resultados encontrados;
+    - intentos realizados con su estado.
     """
 
     df_muestra = df.head(limite).copy()
+
     resultados = []
+    intentos = []
 
     for _, row in df_muestra.iterrows():
-        resultado = buscar_titulo_omdb(
+        print(
+            f"Buscando: {row['title']} "
+            f"({row['release_year']})"
+        )
+
+        resultado = buscar_titulo_omdb_inteligente(
             titulo=row["title"],
             tipo=row["type"],
-            anio=row["release_year"]
+            anio=row["release_year"],
         )
 
         if resultado:
@@ -190,7 +439,30 @@ def enriquecer_dataframe_con_omdb(df, limite=50):
 
             resultados.append(resultado)
 
-    return resultados
+            intentos.append({
+                "show_id": row["show_id"],
+                "status": "found",
+                "message": (
+                    f"Encontrado como {resultado.get('title_omdb')}"
+                ),
+            })
+
+            print(
+                f"  Encontrado: {resultado.get('title_omdb')} "
+                f"| método: {resultado.get('match_method')} "
+                f"| similitud: {resultado.get('similarity_score')}"
+            )
+
+        else:
+            intentos.append({
+                "show_id": row["show_id"],
+                "status": "not_found",
+                "message": "No se encontró una coincidencia en OMDb",
+            })
+
+            print("  No encontrado")
+
+    return resultados, intentos
 
 
 def probar_api():
