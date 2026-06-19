@@ -1,5 +1,7 @@
+mivenv/
 venv/
 .env
 __pycache__/
 *.pyc
-database/netflix.db
+database/*.db
+database/*backup*.db
