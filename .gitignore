@@ -1,0 +1,7 @@
+mivenv/
+venv/
+.env
+__pycache__/
+*.pyc
+database/*.db
+database/*backup*.db
