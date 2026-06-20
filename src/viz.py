@@ -300,3 +300,172 @@ def plot_rating_distribution(df):
     _red_accent_line(fig)
     plt.tight_layout()
     return fig
+def plot_imdb_rating_distribution(df):
+    """Distribución de ratings IMDb — histograma con línea de media."""
+    df = df.dropna(subset=["imdb_rating"])
+
+    fig, ax = _base_fig(figsize=(10, 5.5))
+
+    counts, bins, patches = ax.hist(
+        df["imdb_rating"],
+        bins=10,
+        edgecolor=BG_DARK,
+        linewidth=1.2,
+        zorder=3,
+    )
+
+    # Degradado rojo según altura de cada barra
+    n = len(patches)
+    colors = _bar_colors(n)
+    for patch, color in zip(patches, colors):
+        patch.set_facecolor(color)
+
+    # Etiquetas de valor encima de cada barra
+    for count, patch in zip(counts, patches):
+        if count > 0:
+            ax.text(
+                patch.get_x() + patch.get_width() / 2,
+                patch.get_height() + counts.max() * 0.01,
+                f"{int(count)}",
+                ha="center", va="bottom",
+                fontsize=7.5, color=WHITE, fontweight="bold"
+            )
+
+    # Línea vertical en la media
+    mean_rating = df["imdb_rating"].mean()
+    ax.axvline(mean_rating, color=RED_LIGHT, linewidth=1.8,
+               linestyle="--", zorder=4)
+    ax.annotate(
+        f"  Media: {mean_rating:.1f}",
+        xy=(mean_rating, ax.get_ylim()[1] * 0.92),
+        fontsize=8.5, color=WHITE, fontweight="bold",
+    )
+
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+
+    _set_labels(ax, "Distribución de Ratings IMDb", "IMDb Rating", "Cantidad de títulos")
+    _red_accent_line(fig)
+    plt.tight_layout()
+    return fig
+
+def plot_top_imdb_titles(df):
+    """Top 10 títulos con mejor rating IMDb — barras horizontales."""
+    df = df.dropna(subset=["imdb_rating"])
+    top = df.sort_values(by="imdb_rating", ascending=False).head(10)
+
+    fig, ax = _base_fig(figsize=(10, 5.5))
+
+    n = len(top)
+    colors = _bar_colors(n)[::-1]  # Más intenso el de mayor rating (arriba)
+
+    bars = ax.barh(
+        top["title"],
+        top["imdb_rating"],
+        color=colors,
+        height=0.62,
+        edgecolor="none",
+        zorder=3,
+    )
+
+    # Etiquetas de valor al final de cada barra
+    for bar, val in zip(bars, top["imdb_rating"]):
+        ax.text(
+            val + 0.05,
+            bar.get_y() + bar.get_height() / 2,
+            f"{val:.1f}",
+            va="center", ha="left",
+            fontsize=8, color=WHITE, fontweight="bold"
+        )
+
+    ax.invert_yaxis()
+    ax.set_xlim(0, 10)
+
+    ax.tick_params(colors=GRAY_1, labelsize=8.5, length=0)
+    ax.xaxis.grid(True, color=GRAY_3, linewidth=0.7, linestyle="--", zorder=0)
+    ax.yaxis.grid(False)
+    ax.set_axisbelow(True)
+    for spine in ["top", "right", "left"]:
+        ax.spines[spine].set_visible(False)
+    ax.spines["bottom"].set_edgecolor(GRAY_2)
+
+    _set_labels(ax, "Top 10 Títulos IMDb", "IMDb Rating", "")
+    ax.tick_params(axis="y", colors=WHITE, labelsize=9)
+    _red_accent_line(fig)
+    plt.tight_layout()
+    return fig
+
+def plot_enriched_by_type(df):
+    """Títulos enriquecidos (con rating IMDb) por tipo — barras."""
+    df = df.dropna(subset=["imdb_rating"])
+    conteo = df["type"].value_counts()
+
+    fig, ax = _base_fig(figsize=(7, 5))
+
+    colors = [RED, "#333333"]
+
+    bars = ax.bar(
+        conteo.index,
+        conteo.values,
+        color=colors[:len(conteo)],
+        width=0.5,
+        edgecolor="none",
+        zorder=3,
+    )
+
+    _add_value_labels(ax, bars, offset=conteo.max() * 0.01)
+
+    ax.tick_params(colors=GRAY_1, labelsize=9, length=3)
+    ax.yaxis.grid(True, color=GRAY_3, linewidth=0.7, linestyle="--", zorder=0)
+    ax.xaxis.grid(False)
+    ax.set_axisbelow(True)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    for spine in ["bottom", "left"]:
+        ax.spines[spine].set_edgecolor(GRAY_2)
+
+    _set_labels(ax, "Títulos enriquecidos por tipo", "", "Cantidad de títulos")
+    ax.tick_params(axis="x", colors=WHITE, labelsize=10)
+
+    _red_accent_line(fig)
+    plt.tight_layout()
+    return fig
+
+def plot_average_imdb_by_type(df):
+    """Promedio de rating IMDb por tipo de contenido — barras."""
+    df = df.dropna(subset=["imdb_rating"])
+    promedio = df.groupby("type")["imdb_rating"].mean().sort_values(ascending=False)
+
+    fig, ax = _base_fig(figsize=(7, 5))
+
+    n = len(promedio)
+    colors = [RED if i == 0 else "#333333" for i in range(n)]
+
+    bars = ax.bar(
+        promedio.index,
+        promedio.values,
+        color=colors,
+        width=0.5,
+        edgecolor="none",
+        zorder=3,
+    )
+
+    _add_value_labels(ax, bars, fmt="{:.2f}", offset=promedio.max() * 0.01)
+
+    ax.set_ylim(0, 10)
+
+    ax.tick_params(colors=GRAY_1, labelsize=9, length=3)
+    ax.yaxis.grid(True, color=GRAY_3, linewidth=0.7, linestyle="--", zorder=0)
+    ax.xaxis.grid(False)
+    ax.set_axisbelow(True)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    for spine in ["bottom", "left"]:
+        ax.spines[spine].set_edgecolor(GRAY_2)
+
+    _set_labels(ax, "Promedio IMDb por tipo", "", "IMDb Rating")
+    ax.tick_params(axis="x", colors=WHITE, labelsize=10)
+
+    _red_accent_line(fig)
+    plt.tight_layout()
+    return fig
