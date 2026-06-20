@@ -129,16 +129,21 @@ st.markdown("""
   }
   [data-testid="stMetricLabel"] {
       font-family: 'DM Sans', sans-serif !important;
-      font-size: 0.72rem !important;
+      font-size: 0.7rem !important;
       text-transform: uppercase !important;
-      letter-spacing: 0.1em !important;
+      letter-spacing: 0.08em !important;
       color: #777777 !important;
+      white-space: normal !important;
+      overflow: visible !important;
+      line-height: 1.2 !important;
   }
   [data-testid="stMetricValue"] {
       font-family: 'Bebas Neue', sans-serif !important;
-      font-size: 2.4rem !important;
+      font-size: 1.9rem !important;
       color: #ffffff !important;
-      letter-spacing: 0.03em !important;
+      letter-spacing: 0.02em !important;
+      white-space: normal !important;
+      overflow: visible !important;
   }
 
   [data-testid="stDataFrame"] {
@@ -417,10 +422,11 @@ try:
         if metricas_omdb["maximum_imdb_rating"] else "—"
     )
 
+    total_votos = metricas_omdb["total_imdb_votes"]
     col4.metric(
         "Total votos IMDb",
-        int(metricas_omdb["total_imdb_votes"])
-        if metricas_omdb["total_imdb_votes"] else 0
+        f"{int(total_votos):,}".replace(",", ".")
+        if total_votos else "0"
     )
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -428,10 +434,35 @@ try:
 
     top_imdb = consultar_top_imdb(limite=10, minimo_votos=1000)
 
-    st.dataframe(
-        top_imdb,
-        use_container_width=True,
-    )
+    # Tarjetas visuales con póster, en vez de una tabla plana.
+    for fila_inicio in range(0, len(top_imdb), 5):
+        fila = top_imdb.iloc[fila_inicio:fila_inicio + 5]
+        cols = st.columns(5)
+
+        for col, (_, peli) in zip(cols, fila.iterrows()):
+            with col:
+                poster = peli.get("poster_omdb")
+                if poster and poster != "N/A":
+                    st.image(poster, use_container_width=True)
+                else:
+                    st.markdown(
+                        """<div style="height:220px; background:#1a1a1a;
+                        border-radius:8px; display:flex; align-items:center;
+                        justify-content:center; color:#444; font-size:0.8rem;">
+                        Sin póster</div>""",
+                        unsafe_allow_html=True,
+                    )
+                st.markdown(
+                    f"""<p style="font-size:0.8rem; color:#ddd; margin:0.4rem 0 0;
+                    font-family:'DM Sans',sans-serif; line-height:1.2;">
+                    <b>{peli['title']}</b></p>
+                    <p style="font-size:0.75rem; color:#E50914; margin:0.1rem 0;">
+                    ★ {peli['imdb_rating']} · {int(peli['imdb_votes']):,} votos</p>
+                    """.replace(",", "."),
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("#### Catálogo enriquecido")
@@ -443,6 +474,7 @@ try:
         "main_genre",
         "imdb_rating",
         "imdb_votes",
+        "poster_omdb",
         "source",
     ]
 
@@ -450,6 +482,19 @@ try:
         df_enriquecido[columnas_enriquecido],
         use_container_width=True,
         height=350,
+        column_config={
+            "poster_omdb": st.column_config.ImageColumn(
+                "Póster",
+                width="small",
+            ),
+            "title": "Título",
+            "type": "Tipo",
+            "release_year": "Año",
+            "main_genre": "Género",
+            "imdb_rating": "IMDb",
+            "imdb_votes": "Votos",
+            "source": "Fuente",
+        },
     )
 
 except Exception as e:
@@ -504,13 +549,35 @@ if st.button("Buscar en vivo"):
                 anio=anio_busqueda,
             )
 
+            # Si falla con tipo y año, reintenta solo por título.
+            intento_flexible = False
+            if not resultado:
+                resultado = buscar_titulo_omdb_inteligente(
+                    titulo=titulo_busqueda,
+                )
+                intento_flexible = True
+
         if resultado:
+            if intento_flexible:
+                st.info(
+                    "No se encontró con el tipo/año indicados. "
+                    "Se muestra el resultado más parecido encontrado por título."
+                )
+
             col_img, col_info = st.columns([1, 2])
 
             with col_img:
                 poster = resultado.get("poster_omdb")
-                if poster:
-                    st.image(poster)
+                if poster and poster != "N/A":
+                    st.image(poster, use_container_width=True)
+                else:
+                    st.markdown(
+                        """<div style="height:300px; background:#1a1a1a;
+                        border-radius:8px; display:flex; align-items:center;
+                        justify-content:center; color:#444; font-size:0.85rem;">
+                        Sin póster disponible</div>""",
+                        unsafe_allow_html=True,
+                    )
 
             with col_info:
                 st.markdown(f"**Título OMDb:** {resultado.get('title_omdb')}")
@@ -523,4 +590,7 @@ if st.button("Buscar en vivo"):
                 st.markdown(f"**Similitud:** {resultado.get('similarity_score')}")
                 st.markdown(f"**Sinopsis:** {resultado.get('plot_omdb')}")
         else:
-            st.error("No se encontró el título en OMDb.")
+            st.error(
+                "No se encontró el título en OMDb, ni siquiera con búsqueda flexible. "
+                "Intenta con el nombre original o verifica la ortografía."
+            )
