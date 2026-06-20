@@ -319,7 +319,16 @@ st.dataframe(
         "title", "type", "main_country",
         "release_year", "rating",
         "duration", "main_genre", "date_added",
-    ]],
+    ]].rename(columns={
+        "title": "Título",
+        "type": "Tipo",
+        "main_country": "País",
+        "release_year": "Año",
+        "rating": "Clasificación",
+        "duration": "Duración",
+        "main_genre": "Género",
+        "date_added": "Fecha de adición",
+    }),
     use_container_width=True,
     height=320,
 )
@@ -373,13 +382,23 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-top_recientes = df_filtered.sort_values(by="release_year", ascending=False).head(10)
+top_recientes = df_filtered.sort_values(
+    by="release_year", ascending=False
+).head(10).rename(columns={
+    "title": "Título",
+    "type": "Tipo",
+    "release_year": "Año",
+    "main_country": "País",
+    "rating": "Clasificación",
+    "main_genre": "Género",
+    "duration": "Duración",
+})
 
 st.dataframe(
     top_recientes[[
-        "title", "type", "release_year",
-        "main_country", "rating",
-        "main_genre", "duration",
+        "Título", "Tipo", "Año",
+        "País", "Clasificación",
+        "Género", "Duración",
     ]],
     use_container_width=True,
     height=380,
@@ -478,8 +497,12 @@ try:
         "source",
     ]
 
+    df_enriquecido_filtrado = df_enriquecido[
+        df_enriquecido["imdb_rating"].notna()
+    ]
+
     st.dataframe(
-        df_enriquecido[columnas_enriquecido],
+        df_enriquecido_filtrado[columnas_enriquecido],
         use_container_width=True,
         height=350,
         column_config={
