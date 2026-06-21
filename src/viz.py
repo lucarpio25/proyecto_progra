@@ -396,76 +396,111 @@ def plot_top_imdb_titles(df):
     return fig
 
 def plot_enriched_by_type(df):
-    """Títulos enriquecidos (con rating IMDb) por tipo — barras."""
+    """Títulos enriquecidos por tipo — lollipop chart con efecto glow."""
     df = df.dropna(subset=["imdb_rating"])
-    conteo = df["type"].value_counts()
+    conteo = df["type"].value_counts().sort_values()
 
-    fig, ax = _base_fig(figsize=(7, 5))
+    fig, ax = plt.subplots(figsize=(9, 5), facecolor=BG_DARK)
+    ax.set_facecolor(BG_AXES)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
-    colors = [RED, "#333333"]
+    y_pos = range(len(conteo))
+    total = conteo.sum()
 
-    bars = ax.bar(
-        conteo.index,
-        conteo.values,
-        color=colors[:len(conteo)],
-        width=0.5,
-        edgecolor="none",
-        zorder=3,
-    )
+    for i, (tipo, val) in enumerate(conteo.items()):
+        es_max = val == conteo.max()
+        color = RED if es_max else GRAY_1
 
-    _add_value_labels(ax, bars, offset=conteo.max() * 0.01)
+        # Palo del lollipop
+        ax.plot([0, val], [i, i], color=color, linewidth=2, zorder=2, alpha=0.6)
 
-    ax.tick_params(colors=GRAY_1, labelsize=9, length=3)
-    ax.yaxis.grid(True, color=GRAY_3, linewidth=0.7, linestyle="--", zorder=0)
-    ax.xaxis.grid(False)
-    ax.set_axisbelow(True)
-    for spine in ["top", "right"]:
-        ax.spines[spine].set_visible(False)
-    for spine in ["bottom", "left"]:
-        ax.spines[spine].set_edgecolor(GRAY_2)
+        # Efecto glow: círculos concéntricos con alpha decreciente
+        glow_color = RED_LIGHT if es_max else GRAY_1
+        for size, alpha in zip([1700, 1100, 600], [0.10, 0.18, 0.28]):
+            ax.scatter(val, i, s=size, color=glow_color, alpha=alpha, zorder=3, linewidths=0)
 
-    _set_labels(ax, "Títulos enriquecidos por tipo", "", "Cantidad de títulos")
-    ax.tick_params(axis="x", colors=WHITE, labelsize=10)
+        # Círculo principal
+        ax.scatter(val, i, s=480, color=color, zorder=4, edgecolors=BG_DARK, linewidths=2)
+        ax.text(val, i, f"{val}", ha="center", va="center",
+                fontsize=10, fontweight="bold", color=WHITE, zorder=5)
 
+        # Porcentaje al lado
+        pct = val / total * 100
+        ax.text(val + conteo.max() * 0.1, i, f"{pct:.0f}%",
+                 ha="left", va="center", fontsize=9, color=GRAY_1, zorder=5)
+
+    ax.set_yticks(list(y_pos))
+    ax.set_yticklabels(conteo.index, fontsize=11, color=WHITE)
+    ax.set_xlim(0, conteo.max() * 1.35)
+    ax.set_ylim(-0.6, len(conteo) - 0.4)
+    ax.xaxis.grid(True, color=GRAY_3, linewidth=0.7, linestyle="--", zorder=0)
+    ax.yaxis.grid(False)
+    ax.tick_params(axis="x", colors=GRAY_1, labelsize=8.5)
+    ax.tick_params(axis="y", length=0)
+
+    _set_labels(ax, "Títulos enriquecidos por tipo", "Cantidad de títulos", "")
     _red_accent_line(fig)
     plt.tight_layout()
     return fig
 
+
+from matplotlib.patches import Wedge
+import numpy as np
+
 def plot_average_imdb_by_type(df):
-    """Promedio de rating IMDb por tipo de contenido — barras."""
+    """Promedio IMDb por tipo — gauges tipo velocímetro."""
     df = df.dropna(subset=["imdb_rating"])
     promedio = df.groupby("type")["imdb_rating"].mean().sort_values(ascending=False)
 
-    fig, ax = _base_fig(figsize=(7, 5))
-
     n = len(promedio)
-    colors = [RED if i == 0 else "#333333" for i in range(n)]
+    fig, axes = plt.subplots(1, n, figsize=(5.5 * n, 4.2), facecolor=BG_DARK)
+    if n == 1:
+        axes = [axes]
 
-    bars = ax.bar(
-        promedio.index,
-        promedio.values,
-        color=colors,
-        width=0.5,
-        edgecolor="none",
-        zorder=3,
-    )
+    for ax, (tipo, val) in zip(axes, promedio.items()):
+        ax.set_facecolor(BG_DARK)
+        ax.set_aspect("equal")
+        ax.set_xlim(-1.15, 1.15)
+        ax.set_ylim(-0.15, 1.15)
+        ax.axis("off")
 
-    _add_value_labels(ax, bars, fmt="{:.2f}", offset=promedio.max() * 0.01)
+        # Pista de fondo (semicírculo gris)
+        track = Wedge((0, 0), 1, 0, 180, width=0.28, facecolor=GRAY_3, edgecolor="none")
+        ax.add_patch(track)
 
-    ax.set_ylim(0, 10)
+        # Arco de valor, segmentado con degradado rojo
+        frac = val / 10
+        n_seg = 40
+        for i in range(int(n_seg * frac)):
+            theta1 = 180 - (i / n_seg) * 180
+            theta2 = 180 - ((i + 1) / n_seg) * 180
+            color = plt.cm.Reds(0.4 + 0.6 * (i / n_seg))
+            seg = Wedge((0, 0), 1, theta2, theta1, width=0.28, facecolor=color, edgecolor="none")
+            ax.add_patch(seg)
 
-    ax.tick_params(colors=GRAY_1, labelsize=9, length=3)
-    ax.yaxis.grid(True, color=GRAY_3, linewidth=0.7, linestyle="--", zorder=0)
-    ax.xaxis.grid(False)
-    ax.set_axisbelow(True)
-    for spine in ["top", "right"]:
-        ax.spines[spine].set_visible(False)
-    for spine in ["bottom", "left"]:
-        ax.spines[spine].set_edgecolor(GRAY_2)
+        # Aguja
+        angle = np.radians(180 - frac * 180)
+        ax.plot([0, 0.78 * np.cos(angle)], [0, 0.78 * np.sin(angle)],
+                color=WHITE, linewidth=2, zorder=5, solid_capstyle="round")
+        ax.scatter([0], [0], s=60, color=WHITE, zorder=6)
 
-    _set_labels(ax, "Promedio IMDb por tipo", "", "IMDb Rating")
-    ax.tick_params(axis="x", colors=WHITE, labelsize=10)
+        # Texto central
+        ax.text(0, 0.42, f"{val:.1f}", ha="center", va="center",
+                fontsize=24, fontweight="bold", color=WHITE)
+        ax.text(0, 0.22, "/ 10", ha="center", va="center", fontsize=9, color=GRAY_1)
+        ax.text(0, -0.08, tipo, ha="center", va="center",
+                fontsize=12, fontweight="bold", color=RED)
 
+    fig.suptitle(
+    "Promedio IMDb por tipo",
+    fontfamily="DejaVu Sans",
+    fontsize=13,
+    fontweight="bold",
+    color=WHITE,
+    y=1.02
+	)
+ 
     _red_accent_line(fig)
     plt.tight_layout()
     return fig

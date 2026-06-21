@@ -11,6 +11,10 @@ from viz import (
     plot_titles_by_year,
     plot_top_countries,
     plot_rating_distribution,
+    plot_imdb_rating_distribution,
+    plot_top_imdb_titles,
+    plot_average_imdb_by_type,
+    plot_enriched_by_type,
 )
 from db import (
     consultar_catalogo_enriquecido,
@@ -229,6 +233,14 @@ except Exception as e:
     st.code(str(e))
     st.stop()
 
+# Catálogo enriquecido (OMDb/IMDb) — se carga aquí para que esté disponible
+# tanto en "Visualizaciones IMDb" como en "Datos enriquecidos" más abajo.
+try:
+    df_enriquecido = consultar_catalogo_enriquecido()
+except Exception as e:
+    st.warning("No se pudo cargar el catálogo enriquecido desde SQLite.")
+    st.code(str(e))
+    df_enriquecido = pd.DataFrame()
 
 # ── Sidebar: filtros ─────────────────────────────────────────────────────────
 
@@ -372,7 +384,53 @@ st.pyplot(plot_titles_by_year(df_filtered))
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
+# ── Visualizaciones IMDb ───────────────────────────────────────────────
 
+st.markdown("""
+<div style="font-family:'Bebas Neue',sans-serif;
+font-size:1.3rem;
+letter-spacing:0.1em;
+color:#E50914;
+margin-bottom:0.8rem;">
+  ● VISUALIZACIONES IMDb
+</div>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns(2, gap="medium")
+
+with col1:
+    st.markdown('<div class="stPlot">', unsafe_allow_html=True)
+    st.pyplot(
+        plot_imdb_rating_distribution(df_enriquecido)
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col2:
+    st.markdown('<div class="stPlot">', unsafe_allow_html=True)
+    st.pyplot(
+        plot_average_imdb_by_type(df_enriquecido)
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+col3, col4 = st.columns(2, gap="medium")
+
+with col3:
+    st.markdown('<div class="stPlot">', unsafe_allow_html=True)
+    st.pyplot(
+        plot_enriched_by_type(df_enriquecido)
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col4:
+    st.markdown('<div class="stPlot">', unsafe_allow_html=True)
+    st.pyplot(
+        plot_top_imdb_titles(df_enriquecido)
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Top 10 títulos más recientes (Netflix) ───────────────────────────────────
 
@@ -416,120 +474,121 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-try:
-    df_enriquecido = consultar_catalogo_enriquecido()
-    metricas_db = obtener_metricas_db()
-    metricas_omdb = obtener_metricas_omdb()
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
-        "Títulos enriquecidos",
-        int(metricas_omdb["enriched_titles"])
-        if metricas_omdb["enriched_titles"] else 0
-    )
-
-    col2.metric(
-        "IMDb promedio",
-        metricas_omdb["average_imdb_rating"]
-        if metricas_omdb["average_imdb_rating"] else "—"
-    )
-
-    col3.metric(
-        "IMDb máximo",
-        metricas_omdb["maximum_imdb_rating"]
-        if metricas_omdb["maximum_imdb_rating"] else "—"
-    )
-
-    total_votos = metricas_omdb["total_imdb_votes"]
-    col4.metric(
-        "Total votos IMDb",
-        f"{int(total_votos):,}".replace(",", ".")
-        if total_votos else "0"
-    )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("#### Top 10 títulos según IMDb")
-
-    top_imdb = consultar_top_imdb(limite=10, minimo_votos=1000)
-
-    # Tarjetas visuales con póster, en vez de una tabla plana.
-    for fila_inicio in range(0, len(top_imdb), 5):
-        fila = top_imdb.iloc[fila_inicio:fila_inicio + 5]
-        cols = st.columns(5)
-
-        for col, (_, peli) in zip(cols, fila.iterrows()):
-            with col:
-                poster = peli.get("poster_omdb")
-                if poster and poster != "N/A":
-                    st.image(poster, use_container_width=True)
-                else:
-                    st.markdown(
-                        """<div style="height:220px; background:#1a1a1a;
-                        border-radius:8px; display:flex; align-items:center;
-                        justify-content:center; color:#444; font-size:0.8rem;">
-                        Sin póster</div>""",
-                        unsafe_allow_html=True,
-                    )
-                st.markdown(
-                    f"""<p style="font-size:0.8rem; color:#ddd; margin:0.4rem 0 0;
-                    font-family:'DM Sans',sans-serif; line-height:1.2;">
-                    <b>{peli['title']}</b></p>
-                    <p style="font-size:0.75rem; color:#E50914; margin:0.1rem 0;">
-                    ★ {peli['imdb_rating']} · {int(peli['imdb_votes']):,} votos</p>
-                    """.replace(",", "."),
-                    unsafe_allow_html=True,
-                )
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("#### Catálogo enriquecido")
-
-    columnas_enriquecido = [
-        "title",
-        "type",
-        "release_year",
-        "main_genre",
-        "imdb_rating",
-        "imdb_votes",
-        "poster_omdb",
-        "source",
-    ]
-
-    df_enriquecido_filtrado = df_enriquecido[
-        df_enriquecido["imdb_rating"].notna()
-    ]
-
-    st.dataframe(
-        df_enriquecido_filtrado[columnas_enriquecido],
-        use_container_width=True,
-        height=350,
-        column_config={
-            "poster_omdb": st.column_config.ImageColumn(
-                "Póster",
-                width="small",
-            ),
-            "title": "Título",
-            "type": "Tipo",
-            "release_year": "Año",
-            "main_genre": "Género",
-            "imdb_rating": "IMDb",
-            "imdb_votes": "Votos",
-            "source": "Fuente",
-        },
-    )
-
-except Exception as e:
+if df_enriquecido.empty:
     st.warning(
         "No se pudo cargar la base SQLite. "
         "Ejecuta primero: python3 src/build_database.py"
     )
-    st.code(str(e))
+else:
+    try:
+        metricas_db = obtener_metricas_db()
+        metricas_omdb = obtener_metricas_omdb()
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "Títulos enriquecidos",
+            int(metricas_omdb["enriched_titles"])
+            if metricas_omdb["enriched_titles"] else 0
+        )
+
+        col2.metric(
+            "IMDb promedio",
+            metricas_omdb["average_imdb_rating"]
+            if metricas_omdb["average_imdb_rating"] else "—"
+        )
+
+        col3.metric(
+            "IMDb máximo",
+            metricas_omdb["maximum_imdb_rating"]
+            if metricas_omdb["maximum_imdb_rating"] else "—"
+        )
+
+        total_votos = metricas_omdb["total_imdb_votes"]
+        col4.metric(
+            "Total votos IMDb",
+            f"{int(total_votos):,}".replace(",", ".")
+            if total_votos else "0"
+        )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### Top 10 títulos según IMDb")
+
+        top_imdb = consultar_top_imdb(limite=10, minimo_votos=1000)
+
+        # Tarjetas visuales con póster, en vez de una tabla plana.
+        for fila_inicio in range(0, len(top_imdb), 5):
+            fila = top_imdb.iloc[fila_inicio:fila_inicio + 5]
+            cols = st.columns(5)
+
+            for col, (_, peli) in zip(cols, fila.iterrows()):
+                with col:
+                    poster = peli.get("poster_omdb")
+                    if poster and poster != "N/A":
+                        st.image(poster, use_container_width=True)
+                    else:
+                        st.markdown(
+                            """<div style="height:220px; background:#1a1a1a;
+                            border-radius:8px; display:flex; align-items:center;
+                            justify-content:center; color:#444; font-size:0.8rem;">
+                            Sin póster</div>""",
+                            unsafe_allow_html=True,
+                        )
+                    st.markdown(
+                        f"""<p style="font-size:0.8rem; color:#ddd; margin:0.4rem 0 0;
+                        font-family:'DM Sans',sans-serif; line-height:1.2;">
+                        <b>{peli['title']}</b></p>
+                        <p style="font-size:0.75rem; color:#E50914; margin:0.1rem 0;">
+                        ★ {peli['imdb_rating']} · {int(peli['imdb_votes']):,} votos</p>
+                        """.replace(",", "."),
+                        unsafe_allow_html=True,
+                    )
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### Catálogo enriquecido")
+
+        columnas_enriquecido = [
+            "title",
+            "type",
+            "release_year",
+            "main_genre",
+            "imdb_rating",
+            "imdb_votes",
+            "poster_omdb",
+            "source",
+        ]
+
+        df_enriquecido_filtrado = df_enriquecido[
+            df_enriquecido["imdb_rating"].notna()
+        ]
+
+        st.dataframe(
+            df_enriquecido_filtrado[columnas_enriquecido],
+            use_container_width=True,
+            height=350,
+            column_config={
+                "poster_omdb": st.column_config.ImageColumn(
+                    "Póster",
+                    width="small",
+                ),
+                "title": "Título",
+                "type": "Tipo",
+                "release_year": "Año",
+                "main_genre": "Género",
+                "imdb_rating": "IMDb",
+                "imdb_votes": "Votos",
+                "source": "Fuente",
+            },
+        )
+
+    except Exception as e:
+        st.warning("No se pudo cargar las métricas/top de OMDb.")
+        st.code(str(e))
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("""<hr style="border:none; border-top:1px solid #1e1e1e; margin:1rem 0 1.5rem;">""", unsafe_allow_html=True)
-
 
 # ── Búsqueda en vivo en OMDb ──────────────────────────────────────────────────
 
