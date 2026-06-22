@@ -46,6 +46,10 @@ def registrar_intento_api(show_id, status, message=None):
     """
     Registra si un título fue encontrado o no en OMDb.
     """
+    if not show_id:
+	print("Intento inválido: show_id vacío")
+	return
+
 
     query = """
         INSERT INTO api_search_log (
