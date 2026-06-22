@@ -304,6 +304,9 @@ def plot_imdb_rating_distribution(df):
     """Distribución de ratings IMDb — histograma con línea de media."""
     df = df.dropna(subset=["imdb_rating"])
 
+    if df.empty:
+	return None
+
     fig, ax = _base_fig(figsize=(10, 5.5))
 
     counts, bins, patches = ax.hist(
@@ -332,6 +335,7 @@ def plot_imdb_rating_distribution(df):
             )
 
     # Línea vertical en la media
+    # Calcula la media para mostrar una referencia visual en el histograma.
     mean_rating = df["imdb_rating"].mean()
     ax.axvline(mean_rating, color=RED_LIGHT, linewidth=1.8,
                linestyle="--", zorder=4)
@@ -350,7 +354,10 @@ def plot_imdb_rating_distribution(df):
     return fig
 
 def plot_top_imdb_titles(df):
-    """Top 10 títulos con mejor rating IMDb — barras horizontales."""
+    """
+    Genera un gráfico horizontal con los 10 títulos
+    mejor valorados según IMDb.
+    """
     df = df.dropna(subset=["imdb_rating"])
     top = df.sort_values(by="imdb_rating", ascending=False).head(10)
 
@@ -504,3 +511,5 @@ def plot_average_imdb_by_type(df):
     _red_accent_line(fig)
     plt.tight_layout()
     return fig
+
+    
