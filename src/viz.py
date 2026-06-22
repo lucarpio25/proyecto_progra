@@ -305,7 +305,7 @@ def plot_imdb_rating_distribution(df):
     df = df.dropna(subset=["imdb_rating"])
 
     if df.empty:
-	return None
+        return None
 
     fig, ax = _base_fig(figsize=(10, 5.5))
 
@@ -506,7 +506,7 @@ def plot_average_imdb_by_type(df):
     fontweight="bold",
     color=WHITE,
     y=1.02
-	)
+    )
  
     _red_accent_line(fig)
     plt.tight_layout()
