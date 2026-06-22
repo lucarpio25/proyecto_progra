@@ -9,6 +9,9 @@ from difflib import SequenceMatcher
 import requests
 from dotenv import load_dotenv
 
+import logging
+
+logging.basicConfig(filename="api_log.txt", level=logging.INFO)
 
 load_dotenv()
 
@@ -178,6 +181,10 @@ def hacer_request_omdb(params):
     except ValueError as error:
         print(f"Respuesta JSON inválida: {error}")
         return None
+    except Exception:
+	print("Error al consultar OMDb")
+	return None
+
 
 def formatear_resultado_omdb(data):
     """
@@ -218,6 +225,8 @@ def buscar_titulo_omdb(titulo, tipo=None, anio=None):
     - tipo
     - año
     """
+
+    logging.info(f"Buscando en OMDb: {titulo}")
 
     params = {
         "t": titulo,
