@@ -54,8 +54,8 @@ def registrar_intento_api(show_id, status, message=None):
     Registra si un título fue encontrado o no en OMDb.
     """
     if not show_id:
-	print("Intento inválido: show_id vacío")
-	return
+        print("Intento inválido: show_id vacío")
+        return
 
 
     query = """
@@ -194,8 +194,8 @@ def crear_tablas():
                 imdb_votes INTEGER,
                 type_omdb TEXT,
                 source TEXT,
-		match_method TEXT,
-		similarity_score REAL,
+        match_method TEXT,
+        similarity_score REAL,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (show_id)
                     REFERENCES titles(show_id)
@@ -434,8 +434,8 @@ def guardar_external_ratings(resultados):
             imdb_votes,
             type_omdb,
             source, 
-	    match_method,
-	    similarity_score
+        match_method,
+        similarity_score
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
@@ -457,8 +457,8 @@ def guardar_external_ratings(resultados):
             imdb_votes = excluded.imdb_votes,
             type_omdb = excluded.type_omdb,
             source = excluded.source, 
-	    match_method = excluded.match_method,
-	    similarity_score = excluded.similarity_score,
+        match_method = excluded.match_method,
+        similarity_score = excluded.similarity_score,
             updated_at = CURRENT_TIMESTAMP
     """
 
@@ -484,7 +484,7 @@ def guardar_external_ratings(resultados):
             limpiar_imdb_votes(resultado.get("imdb_votes")),
             resultado.get("type_omdb"),
             resultado.get("source"),
-	    resultado.get("match_method"),
+        resultado.get("match_method"),
             resultado.get("similarity_score"),
         ))
 

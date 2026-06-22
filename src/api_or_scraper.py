@@ -182,8 +182,8 @@ def hacer_request_omdb(params):
         print(f"Respuesta JSON inválida: {error}")
         return None
     except Exception:
-	print("Error al consultar OMDb")
-	return None
+        print("Error al consultar OMDb")
+        return None
 
 
 def formatear_resultado_omdb(data):
