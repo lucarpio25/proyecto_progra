@@ -42,6 +42,13 @@ def conectar_db(db_path=DB_PATH):
 
     return conn
 
+def existe_base_datos():
+    """
+    Verifica si la base de datos existe.
+    """
+
+    return DB_PATH.exists()
+
 def registrar_intento_api(show_id, status, message=None):
     """
     Registra si un título fue encontrado o no en OMDb.
