@@ -335,6 +335,7 @@ def plot_imdb_rating_distribution(df):
             )
 
     # Línea vertical en la media
+    # Calcula la media para mostrar una referencia visual en el histograma.
     mean_rating = df["imdb_rating"].mean()
     ax.axvline(mean_rating, color=RED_LIGHT, linewidth=1.8,
                linestyle="--", zorder=4)
@@ -353,7 +354,10 @@ def plot_imdb_rating_distribution(df):
     return fig
 
 def plot_top_imdb_titles(df):
-    """Top 10 títulos con mejor rating IMDb — barras horizontales."""
+    """
+    Genera un gráfico horizontal con los 10 títulos
+    mejor valorados según IMDb.
+    """
     df = df.dropna(subset=["imdb_rating"])
     top = df.sort_values(by="imdb_rating", ascending=False).head(10)
 
